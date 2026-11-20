@@ -359,8 +359,10 @@ body.pop-open{overflow:hidden}
 .pop-sheet:focus{outline:none}
 .pop-grip{width:44px;height:5px;border-radius:3px;background:var(--rule);margin:-4px auto 10px}
 .pop-kind{font-size:12.5px;font-weight:700;color:var(--k);margin:0}
-.kind-event{--k:var(--blue-ink)} .kind-press{--k:#C07E00} .kind-injury{--k:var(--antenna)}
+.kind-event{--k:var(--blue-ink)} .kind-clutch{--k:var(--antenna)} .kind-press{--k:#C07E00} .kind-injury{--k:var(--antenna)}
 .pop .scene{margin:8px 0 10px}
+.pop .mini-board{margin:4px 0 8px}
+.pop h2.verdict{font-size:30px}
 .pop .news{margin:6px 0}
 @keyframes sheetUp{from{transform:translateY(48px);opacity:.3}to{transform:none;opacity:1}}
 @keyframes popIn{from{transform:translateY(10px) scale(.97);opacity:0}to{transform:none;opacity:1}}
@@ -412,7 +414,7 @@ body.pop-open{overflow:hidden}
 .dnote{font-size:11.5px;color:var(--muted);margin:6px 0 0}
 .pop-timer{margin-top:10px}
 .pop-timer i{display:block;height:3px;border-radius:2px;background:var(--rule);position:relative;overflow:hidden}
-.pop-timer i::after{content:"";position:absolute;inset:0;background:var(--k);transform-origin:left;animation:popbar 3.6s linear forwards}
+.pop-timer i::after{content:"";position:absolute;inset:0;background:var(--k);transform-origin:left;animation:popbar 6s linear forwards}
 .pop-sheet.held .pop-timer i::after{animation-play-state:paused;opacity:.4}
 .pop-timer span{display:block;font-size:11.5px;color:var(--muted);margin-top:5px}
 @keyframes popbar{from{transform:scaleX(0)}to{transform:scaleX(1)}}
@@ -440,6 +442,35 @@ body.pop-open{overflow:hidden}
 .feed li{font-size:13px;padding:5px 0;border-bottom:1px solid var(--rule)}
 @media (max-width:480px){ .focus-grid{grid-template-columns:repeat(2,1fr)} }
 @media (min-width:720px){ .focus-grid{grid-template-columns:repeat(4,1fr)} }
+/* 상점 */
+.wallet{display:flex;justify-content:space-between;align-items:center;background:#000;color:#fff;border-radius:6px;padding:10px 14px}
+.wallet span{font-size:13px;color:#AEB6C6}
+.wallet strong{font-family:var(--f-display);font-weight:400;font-size:24px;color:var(--led)}
+.items{display:grid;grid-template-columns:1fr;gap:8px}
+.item{background:var(--card);border:1.5px solid var(--rule);border-radius:4px;padding:10px 12px}
+.item.mine{border-color:var(--go)}
+.item-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.item .price{font-family:var(--f-display);font-size:17px;color:var(--blue-ink);white-space:nowrap}
+.item .muted{margin:2px 0;font-size:12.5px}
+.item .eff{margin:4px 0 8px;font-size:13.5px;font-weight:700;color:var(--ok-ink)}
+.item .btn{margin:0;text-align:center;padding:8px}
+.shop-btn{border-left:5px solid var(--led);margin-top:12px}
+.shop-btn span{float:right;font-family:var(--f-display);color:var(--blue-ink)}
+@media (min-width:720px){ .items{grid-template-columns:1fr 1fr} }
+@media (max-width:400px){ .tab{font-size:14.5px} }
+/* 팬 댓글 */
+.cmts{margin-top:8px;border-top:1px dashed var(--rule);padding-top:6px}
+.cmts summary{cursor:pointer;font-size:12.5px;color:var(--blue-ink);list-style:none}
+.cmts summary::-webkit-details-marker{display:none}
+.cmts summary::before{content:"💬 "}
+.cmts ul{list-style:none;margin:6px 0 0;padding:0}
+.cmts li{display:grid;grid-template-columns:1fr auto;gap:0 10px;padding:6px 0;border-bottom:1px solid var(--rule);font-size:13px}
+.cmts li:last-child{border-bottom:0}
+.cmts .nk{font-size:11.5px;color:var(--muted);font-weight:700}
+.cmts .nk em{font-style:normal;font-weight:700;color:#fff;background:var(--antenna);border-radius:3px;padding:0 4px;margin-left:4px;font-size:10.5px}
+.cmts .tx{grid-column:1;color:var(--ink)}
+.cmts .lk{grid-column:2;grid-row:1/span 2;align-self:center;font-size:11.5px;color:var(--muted);white-space:nowrap}
+.cmts li.troll .tx{color:var(--muted)}
 /* QA 수정 */
 .namebox>.btn,.namebox>button{flex:none;white-space:nowrap}
 .namebox input{min-width:0}
@@ -783,6 +814,7 @@ function gain(k,mult){
   if(S.talent==='노력파') g*=1.12;
   if(seasonMode() && S.plan) g*=1.1; // 시즌 계획 집중 훈련 보너스
   if(S.coachTip && S.coachTip.key===phaseKey() && S.coachTip.k===k) g*=1.35;
+  if(active('trainer')) g*=1.15;
   const before=s;
   S.stats[k]=clamp(r1(s+g),1,99);
   return r1(S.stats[k]-before);
@@ -859,11 +891,13 @@ function playMatch(opp,k,oppName,label){
 
 /* ---------- 구간 진행 ---------- */
 function phaseAction(id){
-  S.phSnap=snap(); S.lastReport=null;
+  S.phSnap=snap();
+  if(owned('recover')) S.cond=clamp(S.cond+4,0,100);
+  if(active('nutri')) S.cond=clamp(S.cond+3,0,100); S.lastReport=null;
   doAction(id);
   const ph=curPhase();
   // 랜덤 이벤트
-  if(ph.k!=='awards' && R()<(seasonMode()?0.16:0.42)){
+  if(ph.k!=='awards' && R()<(seasonMode()?0.32:0.42)){
     const ev=pickEvent();
     if(ev){ S.modal={type:'event',id:ev.id}; S.screen='event'; save(); render(); return; }
   }
@@ -948,7 +982,7 @@ function runLeague(ph){
     if(S.fame>=25 || (ro.r==='주전' && ovr()>=teamReq()+4)){ lines.push('⭐ 올스타전 팬 투표 선정!'); S.fame+=4; S.season.teamAwards.push('올스타 선정'); }
   }
   if(ph.last){ S.season.rank=rk.rank; }
-  if(!seasonMode() && ro.r==='주전' && l>=w+3 && R()<.7) queueIv('slump',{l});
+  if(ro.r==='주전' && l>=w+3 && R()<.7) queueIv('slump',{l});
   finishPhase(lines);
 }
 function avgRating(L){ return L.reduce((a,t)=>a+t.rating,0)/L.length; }
@@ -1027,7 +1061,6 @@ function runTour(ph){
     }
     if(isFinal && !ph.clutchDone){
       const c=buildClutch(ph);
-      if(c && seasonMode()){ let bi=0; c.opts.forEach((o,i)=>{ if(clutchChance(o)>clutchChance(c.opts[bi])) bi=i; }); S.modal={type:'clutch',c}; chooseClutch(bi); return; }
       if(c){ S.modal={type:'clutch',c}; S.screen='clutch'; save(); render(); return; }
     }
     const r=tourMatch(ph,opp,isFinal?ph.clutchBoost||0:0, isFinal&&ph.live?ph.live:null);
@@ -1122,7 +1155,7 @@ function concludeTour(ph){
     }else if(res.medal==='silver' && ph.k==='post'){ S.season.teamAwards.push('준우승'); }
   }
   const ro2 = ph.k==='nat'?natRole():role();
-  if(ro2.share>0 && (ph.k==='post'||ph.k==='nat'||!seasonMode())){
+  if(ro2.share>0){
     const title = ph.k==='nat'?`${ph.comp} ${res.label}`: ph.k==='post'?(S.stage==='PRO'?'V리그 챔피언결정전':`${S.team.league} 플레이오프`):`${ph.cup}`;
     if(res.medal==='gold' || (ph.k==='nat'&&res.medal)) queueIv('win',{title: ph.k==='nat'?title:`${title} 우승`});
     else if(res.medal==='silver' && ph.k!=='nat') queueIv('lose',{title});
@@ -1211,12 +1244,21 @@ function chooseClutch(i){
   if(ok){ S.fame+=2; S.stats.men=clamp(r1(S.stats.men+0.6),1,99); }
   SFX.play(ok?'spike':'whistle'); if(ok) SFX.later('cheer',250);
   ph.clutchInfo={t:o.t,ok,txt,p,scene: o.k.includes('srv')?'srv':({OH:'atk',OP:'atk',MB:'blk',S:'set',L:'def'}[S.pos])};
-  S.modal=null; S.screen='phase';
-  runTour(ph);
+  S.modal={type:'clutchResult',ok,txt,o,p,delta:diffSnap(sn)}; S.screen='clutchResult';
+  save(); render();
 }
 
 /* ---------- 이벤트 ---------- */
 const EVENTS = [
+  {id:'scout_pro',w:()=>((S.stage==='HS'&&S.grade>=2)||S.stage==='UNI') && ovr()>=teamReq()-8 ? 1.4:0,t:'프로 스카우트 방문',d:()=>{ S._st=S._st||pick(krTeams()).name; return `오늘 경기에 ${S._st} 스카우트가 왔다는 소문이 돈다.`; },
+    c:[{t:'경기 후 인사하며 어필한다',f:()=>{ const t=S._st; S._st=null; addScout('pro',t); S.fame+=2; return `${t}이(가) 관심 구단 명단에 올렸다. 드래프트 평가 상승`; }},
+       {t:'평소처럼 경기에만 집중한다',f:()=>{ const t=S._st; S._st=null; bump('men',.6); if(R()<.6){ addScout('pro',t); return `묵묵한 플레이가 눈에 띄었다. ${t} 관심, 배구 IQ +0.6`; } return '배구 IQ +0.6. 이번엔 눈에 띄지 못했다'; }}]},
+  {id:'scout_uni',w:()=>S.stage==='HS'&&S.grade>=2&&S.gender==='M'&&!S.uniOffer?1:0,t:'대학 장학 제안',d:()=>{ S._su=S._su||pick(UNIS_M); return `${S._su} 감독이 찾아와 장학생으로 오라고 제안한다.`; },
+    c:[{t:'긍정적으로 생각해 보겠다고 답한다',f:()=>{ S.uniOffer=S._su; S._su=null; return `${S.uniOffer} 장학 제안을 받아 뒀다. 졸업 때 고를 수 있다`; }},
+       {t:'프로 직행이 목표라고 말한다',f:()=>{ S._su=null; S.trust+=2; return '감독 신뢰 +2'; }}]},
+  {id:'scout_semi',w:()=>(S.stage==='HS'&&S.grade===3)?0.8:0,t:'실업팀 관심',d:()=>`${pick(SEMI_TEAMS[S.gender])} 관계자가 졸업 후 계획을 묻는다.`,
+    c:[{t:'연락처를 받아 둔다',f:()=>{ addScout('semi','실업팀'); return '실업팀 입단 테스트 합격 가능성 상승'; }},
+       {t:'정중히 사양한다',f:()=>{ bump('men',.4); return '배구 IQ +0.4'; }}]},
   {id:'mate_meal',w:()=>(S.mates||[]).length?.8:0,t:'동료와 저녁',d:()=>`${(S.mates||[{name:'동료'}])[0].name}이(가) 경기 끝나고 같이 밥 먹자고 한다.`,
     c:[{t:'같이 간다',f:()=>{addChem(8);S.cond=clamp(S.cond+5,0,100);return '케미 +8, 컨디션 +5';}},
        {t:'오늘은 쉬고 싶다',f:()=>{S.cond=clamp(S.cond+10,0,100);addChem(-2);return '컨디션 +10, 케미 -2';}}]},
@@ -1341,9 +1383,10 @@ function endSeason(){
   for(const k in S.stats){
     let s=S.stats[k];
     if(rate>0) s+=Math.max(0,S.cap[k]-s)*rate*rnd(.8,1.2);
-    if(a>=30){ const dec=(a-29)*(phys.includes(k)?.7:.3)*rnd(.6,1.3); s-=dec; if(k==='men') s+=1; }
+    if(a>=30){ const dec=(a-29)*(phys.includes(k)?.7:.3)*rnd(.6,1.3)*(owned('capsule')?.7:1); s-=dec; if(k==='men') s+=1; }
     S.stats[k]=clamp(r1(s),1,99);
   }
+  seasonIncome();
   rivalSeason();
   S.lastReport=null;
   S.age++; S.year++;
@@ -1358,11 +1401,17 @@ function endSeason(){
   // 진로
   if(S.stage==='HS'){
     if(S.grade<3){ S.grade++; startSeason(); render(); return; }
-    return runDraft('HS');
+    return openPath('HS');
   }
   if(S.stage==='UNI'){
-    if(S.grade<2){ S.grade++; startSeason(); render(); return; }
-    return runDraft('UNI');
+    if(S.team.league==='실업'){
+      if(S.age>=36) return endCareer('실업 무대에서 오랜 시간 코트를 지킨 뒤 은퇴했다.');
+      if(S.age<=28) return runDraft('SEMI');
+      S.modal={type:'draft',fail:true,from:'SEMI',noDraft:true}; S.screen='draft'; save(); render(); return;
+    }
+    if(S.grade>=4) return runDraft('UNI');
+    if(S.grade>=2) return openPath('UNI');
+    S.grade++; startSeason(); render(); return;
   }
   // 프로/해외: 연봉 & 오프시즌 선택
   updateSalary();
@@ -1430,8 +1479,8 @@ function signContract(sig){
 }
 function runDraft(from){
   const o=ovr();
-  const hsBonus = S.awards.filter(a=>a.y>=S.year-3 && /우승|최우수|청소년/.test(a.t)).length*1.2;
-  const score = o + hsBonus + gauss()*2 + (from==='UNI'?-1:0) + (S.hand==='L'&&(S.pos==='OP'||S.pos==='OH')?1.5:0);
+  const hsBonus = S.awards.filter(a=>a.y>=S.year-3 && /우승|최우수|청소년/.test(a.t)).length*1.2 + scoutBonus() + (from==='UNI'?(S.grade-2)*0.6:0);
+  const score = o + hsBonus + gauss()*2 + (from==='UNI'?-1:0) + (from==='SEMI'?0.5:0) + (S.hand==='L'&&(S.pos==='OP'||S.pos==='OH')?1.5:0);
   let pick_,rd;
   if(score>=64){rd=1;pick_=ri(1,2);}
   else if(score>=60){rd=1;pick_=ri(3,7);}
@@ -1439,13 +1488,14 @@ function runDraft(from){
   else if(score>=51){rd=3;pick_=ri(1,7);}
   else {rd=0;}
   if(rd===0){
-    S.modal={type:'draft',fail:true,from};
+    S.modal={type:'draft',fail:true,from,tried:{},msg:null};
     S.screen='draft'; save(); render(); return;
   }
   const idx = rd===1 ? clamp(pick_-1,0,6) : ri(0,6);
   const t = krTeams()[idx];
   const rating = rd===1 ? 66+pick_*0.9+rnd(-1.5,1.5) : 70+rnd(-2,4);
   S.draftInfo={rd,pick:pick_,team:t.name,from};
+  if(from==='SEMI') pushNews({h:`실업 출신 ${S.name}, ${t.name} 지명`,b:`${S.team.name}에서 뛰던 ${S.name}이(가) 드래프트를 통해 V리그에 입성한다.`,tag:'드래프트'});
   S.draftTeam=teamFrom(t,rating);
   S.draftTrust=rd===1?52:44;
   S.draftSalary=rd===1?(pick_<=2?1.5:1.0):0.6;
@@ -1459,15 +1509,27 @@ function acceptDraft(){
   S.rookieSeason=true;
   openContract('신인 계약', S.draftTeam, {stage:'PRO',trust:S.draftTrust,salary:S.draftSalary});
 }
+// 실업팀: 매 시즌 끝에 드래프트(또는 V리그 구단 영입)에 다시 도전할 수 있어요
+const SEMI_TEAMS={M:['화성시청','영천시체육회'],F:['수원시청']};
+function joinSemi(){
+  const keep = S.stage==='UNI' && S.team.league==='실업';
+  if(!keep){
+    S.stage='UNI'; S.grade=1;
+    const nm=pick(SEMI_TEAMS[S.gender]);
+    S.team={name:nm,e:nm.slice(0,2),rating:52,color:'#0F766E',league:'실업'}; S.mates=makeMates(); S.trust=50;
+    S.salary=0.4;
+    addLog(`🏢 실업팀 ${nm} 입단. 실업 무대에서 뛰며 매 시즌 V리그 문을 두드린다.`,'hi');
+  }else{ S.grade++; addLog(`🏢 ${S.team.name}에서 한 시즌 더. 다음 드래프트를 노린다.`,''); }
+  S.modal=null; startSeason(); render();
+}
 function draftFailChoice(c){
   if(c==='uni'){
     S.stage='UNI'; S.grade=1;
-    S.team = S.gender==='M' ? {name:pick(['경기대','인하대','성균관대','한양대','중부대']),e:'',rating:50,color:'#0F766E',league:'대학'} : {name:'수원시청',e:'수원',rating:50,color:'#0F766E',league:'실업'};
-    S.team.e=S.team.name.slice(0,2); S.mates=makeMates();
-    S.trust=48; addLog(S.team.league==='대학'?`🎓 ${S.team.name} 배구부 진학. 2년 뒤 드래프트에 재도전한다.`:`🏢 실업팀 ${S.team.name} 입단. 2년 뒤 드래프트에 재도전한다.`,'hi');
-    startSeason(); render();
+    S.modal=null; return enterUni();
+  }else if(c==='semi'){
+    joinSemi();
   }else{
-    endCareer('프로의 꿈을 접고 실업팀에서 배구를 이어가기로 했다.');
+    endCareer('선수 생활을 마무리하고 새로운 길을 찾기로 했다.');
   }
 }
 
@@ -1572,7 +1634,7 @@ function emblem(t,size){
 function contractView(){
   const c=S.pending;
   const t=c.team;
-  const kindTxt={'신인 계약':'신인 선수 입단 계약','재계약':'재계약','해외 이적':'해외 이적 계약','V리그 복귀':'V리그 복귀 계약'}[c.kind]||c.kind;
+  const kindTxt={'신인 계약':'신인 선수 입단 계약','재계약':'재계약','해외 이적':'해외 이적 계약','V리그 복귀':'V리그 복귀 계약','수련선수 계약':'수련선수 계약 (입단 테스트 합격)'}[c.kind]||c.kind;
   const until=c.y+c.years;
   return `<section class="paper plain contract" id="contract">
     <div class="c-head">${emblem(t,46)}<div><p class="muted" style="margin:0">${esc(kindTxt)}</p><h2 style="margin:0">선수 계약서</h2></div></div>
@@ -1666,7 +1728,7 @@ function answerIv(i){
   S.cond=clamp(S.cond,0,100); S.trust=clamp(S.trust,0,100);
   pushNews({h:`[인터뷰] ${S.name} "${a.q}"`, b:`${d.q(iv.ctx)}라는 질문에 ${S.name}은(는) "${a.t}"라고 답했다.`, tag:'인터뷰'});
   addLog(`🎤 인터뷰: "${a.t}" (${res})`,'hi');
-  S.ivDone={next:iv.next,type:iv.type,q:d.q(iv.ctx),a:a.t,quote:a.q,res,delta:diffSnap(sn)};
+  S.ivDone={idx:i,next:iv.next,type:iv.type,q:d.q(iv.ctx),a:a.t,quote:a.q,res,delta:diffSnap(sn)};
   S.iv=null; S.screen='ivResult'; save(); render();
 }
 function ivContinue(){
@@ -1724,7 +1786,7 @@ function refreshNews(){ S.news=genNews(); }
 function newsHTML(list){
   if(!list||!list.length) return '';
   return `<div class="news-col"><h3>오늘의 배구 뉴스</h3>${list.map(n=>`<article class="news">
-    <p class="hl">${esc(n.h)}</p><p class="bd">${esc(n.b)}</p>${n.hint?`<p class="tip"><b>힌트</b> ${esc(n.hint)}</p>`:''}</article>`).join('')}</div>`;
+    <p class="hl">${esc(n.h)}</p><p class="bd">${esc(n.b)}</p>${n.hint?`<p class="tip"><b>힌트</b> ${esc(n.hint)}</p>`:''}${commentsHTML(n.tag==='인터뷰'?'humble':guessCtx(n.h+' '+n.b),S.year+n.h,{k:2})}</article>`).join('')}</div>`;
 }
 function newsArchiveCard(){
   const a=S.newsArc||[]; if(!a.length) return '';
@@ -1741,7 +1803,7 @@ const NATIONS = ['일본','중국','태국','이란','브라질','폴란드','�
 function oppNameFor(ph,rname){
   if(ph.k==='nat') return pick(NATIONS);
   if(S.stage==='HS'){ const pool=schools(S.gender).map(s=>s.name).filter(n=>n!==S.team.name); return pick(pool); }
-  if(S.stage==='UNI') return S.team.league==='실업'?pick(['화성시청','양산시청','대구시청','포항시체육회']):pick(['경기대','인하대','성균관대','한양대','중부대','홍익대'].filter(n=>n!==S.team.name));
+  if(S.stage==='UNI') return S.team.league==='실업'?pick([...SEMI_TEAMS[S.gender],...krTeams().map(t=>t.name.split(' ')[0]+' 2군')].filter(n=>n!==S.team.name)):pick(['경기대','인하대','성균관대','한양대','중부대','홍익대'].filter(n=>n!==S.team.name));
   if(S.stage==='PRO') return pick(krTeams().map(t=>t.name).filter(n=>n!==S.team.name));
   const L=ABROAD.find(a=>a.league===S.team.league); return L?pick(L.teams[S.gender].filter(n=>n!==S.team.name).concat(['리그 상위권 팀'])):'상대 팀';
 }
@@ -1990,6 +2052,8 @@ const INJ = {
   mid:['무릎 건염','어깨 회전근개 손상','발목 인대 손상'],
 };
 function injureTyped(n,why){
+  if(owned('brace') && R()<.25){ addLog(`🦵 ${why} 다칠 뻔했지만 보호대 덕분에 큰 부상을 피했다.`,'good'); return; }
+  if(active('physio')) n=Math.max(1,n-1);
   const severe = n>=2 && R()<.25;
   const name = severe?'전방십자인대 파열': n>=2? pick(INJ.mid): pick(INJ.light);
   S.injury={name,severe,from:why};
@@ -2526,10 +2590,10 @@ function restThrough(){
 let popTimer=null;
 function schedulePopAuto(app){
   clearTimeout(popTimer); popTimer=null;
-  if(!S || !['eventResult','ivResult'].includes(S.screen) || S.auto) return;
+  if(!S || !['eventResult','ivResult','clutchResult'].includes(S.screen) || S.auto) return;
   const sheet=app.querySelector('.pop-sheet'); if(!sheet) return;
-  const go=()=>{ popTimer=null; if(S.screen==='eventResult') eventContinue(); else if(S.screen==='ivResult') ivContinue(); };
-  popTimer=setTimeout(go,3600);
+  const go=()=>{ popTimer=null; if(S.screen==='eventResult') eventContinue(); else if(S.screen==='ivResult') ivContinue(); else if(S.screen==='clutchResult'){ S.modal=null; S.screen='phase'; runTour(curPhase()); } };
+  popTimer=setTimeout(go,6000);
   const hold=()=>{ if(!popTimer) return; clearTimeout(popTimer); popTimer=null; sheet.classList.add('held'); const t=sheet.querySelector('.pop-timer span'); if(t) t.textContent='멈췄어요. 다 읽었으면 계속을 누르세요'; };
   sheet.addEventListener('pointerdown',e=>{ if(!e.target.closest('button')) hold(); },{once:true});
 }
@@ -2623,6 +2687,8 @@ function seasonView(){
     <div class="focus-grid">${FOCUS.map(f=>{ const on=p.focus.includes(f.id); const key=(ACTIONS.find(a=>a.id===f.id)||{s:[]}).s.some(isKey);
       return `<button class="focus ${on?'on':''} ${key?'key':''}" data-act="focus" data-arg="${f.id}" aria-pressed="${on}"><span class="t">${f.t}</span><span class="d">${f.d}</span>${key?'<span class="tag">핵심</span>':''}</button>`; }).join('')}</div>
     <div class="seg-ctl c2" style="margin-top:10px"><button aria-pressed="${!p.hard}" data-act="hard" data-arg="0">보통 강도<small>부상 걱정 적음</small></button><button aria-pressed="${p.hard}" data-act="hard" data-arg="1">지옥 특훈 섞기<small>성장 ↑ 부상 위험 ↑</small></button></div>`;
+  const affordable=SHOP.filter(it=>!canBuy(it)).length;
+  h+=`<button class="btn shop-btn" data-act="goShop">상점 <span>자금 ${fmtMoney(money())}</span><small>${affordable?`지금 살 수 있는 물품 ${affordable}개`:'장비와 관리 서비스로 능력치를 올려요'}</small></button>`;
   if(canTalk()) h+=`<button class="btn talk-btn" data-act="talkStart">감독과 대화하기<small>시즌마다 한 번. 출전 기회, 훈련 조언, 포지션 전향, 컨디션 이야기</small></button>`;
   h+=`<button class="btn go season-go" data-act="runSeason">${started?'이어서 시즌 진행':'시즌 진행'}<small>이벤트, 대표팀 소집, 큰 부상, 결승 중계에서만 잠깐 멈춰요</small></button>
     <button class="btn quiet" data-act="modePhase">구간별로 직접 하기</button></section>`;
@@ -2632,6 +2698,198 @@ function seasonView(){
 function seasonBar(){
   if(!S || !S.running || S.stage==='RETIRED') return '';
   return `<div class="autobar on" role="status"><span>시즌 진행 중</span><button data-act="stopSeason">멈추기</button></div>`;
+}
+
+/* =========================================================
+   상점: 연봉으로 모은 자금으로 장비·관리 서비스 구입 (금액 단위: 만원)
+   ========================================================= */
+const SHOP = [
+  // 장비 (한 번 사면 계속)
+  {id:'shoes',  cat:'장비', t:'프로용 배구화',        price:30,    d:'쿠션과 접지력이 좋은 경기화',            eff:'점프력 +1.5',             once:true, st:{jmp:1.5}},
+  {id:'brace',  cat:'장비', t:'무릎·발목 보호대 세트', price:25,    d:'착지 충격을 잡아 주는 보호대',          eff:'부상 4번 중 1번을 막아 줌', once:true},
+  {id:'ball',   cat:'장비', t:'개인 공 · 서브 연습 세트', price:120, d:'공 10개와 서브 타깃 매트',              eff:'서브 +2',                 once:true, st:{srv:2}},
+  {id:'tablet', cat:'장비', t:'영상 분석 태블릿',      price:300,   d:'경기 영상과 분석 프로그램',              eff:'배구 IQ +2, 감독 신뢰 +3', once:true, st:{men:2}, trust:3},
+  {id:'home',   cat:'장비', t:'홈 트레이닝 장비',      price:600,   d:'파워랙, 플라이오 박스, 밴드',           eff:'체력 +2, 점프력 +1',       once:true, st:{sta:2,jmp:1}},
+  {id:'recover',cat:'장비', t:'회복 장비 세트',        price:1500,  d:'공기압 마사지기와 냉온 회복기',          eff:'구간마다 컨디션 +4',       once:true},
+  {id:'capsule',cat:'장비', t:'고압 산소 캡슐',        price:20000, d:'베테랑들이 쓰는 회복 캡슐',              eff:'30세 이후 노화 30% 감소',  once:true},
+  // 관리 서비스 (이번 시즌만)
+  {id:'nutri',  cat:'시즌 관리', t:'영양 관리 서비스',  price:1200,  d:'전담 영양사의 시즌 식단',                eff:'이번 시즌 체력 +1, 구간마다 컨디션 +3', season:true, st:{sta:1}},
+  {id:'physio', cat:'시즌 관리', t:'물리치료 패키지',  price:2000,  d:'시즌 내내 체외충격파·도수치료',          eff:'이번 시즌 부상 결장 1구간 단축',       season:true},
+  {id:'trainer',cat:'시즌 관리', t:'개인 트레이너',     price:4000,  d:'시즌 동안 1:1 맞춤 훈련',                eff:'이번 시즌 훈련 효과 +15%',            season:true},
+  {id:'camp',   cat:'시즌 관리', t:'해외 개인 레슨 캠프', price:6000, d:'비시즌 2주, 유럽 명코치 1:1 레슨',       eff:'핵심 능력치 2개 +2 (1년에 한 번)',     season:true},
+];
+function money(){ return S.money||0; }
+function fmtMoney(m){ m=Math.round(m); if(m>=10000){ const e=Math.floor(m/10000), r=m%10000; return `${e}억${r?` ${r.toLocaleString('ko-KR')}만`:''}원`; } return `${m.toLocaleString('ko-KR')}만원`; }
+function owned(id){ return !!(S.gear&&S.gear[id]); }
+function active(id){ return !!(S.buffs&&S.buffs[id]===S.year); }
+function canBuy(it){
+  if(it.once && owned(it.id)) return '보유 중';
+  if(it.season && active(it.id)) return '이번 시즌 이용 중';
+  if(money()<it.price) return '자금 부족';
+  return '';
+}
+function buyItem(id){
+  const it=SHOP.find(x=>x.id===id); if(!it || canBuy(it)) return;
+  const sn=snap();
+  S.money=money()-it.price;
+  if(it.once){ S.gear=S.gear||{}; S.gear[id]=S.year; }
+  if(it.season){ S.buffs=S.buffs||{}; S.buffs[id]=S.year; }
+  for(const k in (it.st||{})) S.stats[k]=clamp(r1(Math.min(S.stats[k]+it.st[k], Math.max(S.stats[k],S.cap[k]+2))),1,99);
+  if(it.trust) S.trust=clamp(S.trust+it.trust,0,100);
+  if(id==='camp'){ const ks=Object.keys(POS[S.pos].w).filter(isKey).sort((a,b)=>POS[S.pos].w[b]-POS[S.pos].w[a]).slice(0,2); ks.forEach(k=>S.stats[k]=clamp(r1(Math.min(S.stats[k]+2,Math.max(S.stats[k],S.cap[k]+2))),1,99)); }
+  S.shopMsg={t:it.t,delta:diffSnap(sn)};
+  addLog(`🛒 ${it.t} 구입 (-${fmtMoney(it.price)}). ${it.eff}`,'hi');
+  SFX.play('tick'); save(); render();
+}
+// 수입: 시즌이 끝날 때 연봉의 절반(세금·생활비 제외)과 수상 보너스
+function seasonIncome(){
+  let inc=0, why=[];
+  if(S.stage==='HS'){ inc=50; why.push('부모님 용돈과 장학금'); }
+  else if(S.stage==='UNI' && S.team.league!=='실업'){ inc=200; why.push('대학 장학금'); }
+  else if(S.salary){ inc=Math.round(S.salary*10000*0.3); why.push(`연봉 ${S.salary}억 중 세금·생활비 빼고 30%`); }
+  const bonus=S.awards.filter(a=>a.y===S.year).reduce((a,x)=>a+(x.w||0),0)*50;
+  if(bonus){ inc+=bonus; why.push(`수상·우승 보너스 ${fmtMoney(bonus)}`); }
+  S.money=money()+inc;
+  if(inc) addLog(`💰 시즌 정산 +${fmtMoney(inc)} (${why.join(', ')}). 자금 ${fmtMoney(S.money)}`,'good');
+}
+function shopView(){
+  const m=S.shopMsg; S.shopMsg=null;
+  const cats=[...new Set(SHOP.map(x=>x.cat))];
+  return `<section class="paper plain shop"><h2>상점</h2>
+    <div class="wallet"><span>보유 자금</span><strong>${fmtMoney(money())}</strong></div>
+    <p class="muted" style="margin-top:6px">시즌이 끝날 때마다 연봉의 30%(세금과 생활비를 뺀 몫)가 자금으로 들어와요. 고교·대학 때는 용돈과 장학금이 조금 들어오고, 수상하면 보너스가 붙어요.</p>
+    ${m?`<p class="tip"><b>구입</b> ${esc(m.t)}</p>${m.delta&&m.delta.stats.length?deltaHTML(m.delta,'구입으로 바뀐 능력치'):''}`:''}
+    ${cats.map(c=>`<h3 style="margin-top:14px">${c}</h3><p class="muted" style="margin-top:0">${c==='장비'?'한 번 사면 계속 효과가 있어요.':'이번 시즌에만 효과가 있어요. 시즌마다 다시 살 수 있어요.'}</p>
+      <div class="items">${SHOP.filter(x=>x.cat===c).map(it=>{ const why=canBuy(it); const mine=why==='보유 중'||why==='이번 시즌 이용 중';
+        return `<article class="item ${mine?'mine':''}"><div class="item-top"><strong>${esc(it.t)}</strong><span class="price">${fmtMoney(it.price)}</span></div>
+          <p class="muted">${esc(it.d)}</p><p class="eff">${esc(it.eff)}</p>
+          <button class="btn ${why?'':'go'}" data-act="buy" data-arg="${it.id}" ${why?'disabled':''}>${why||'구입하기'}</button></article>`; }).join('')}</div>`).join('')}
+  </section>`;
+}
+
+/* =========================================================
+   입단 경로: 진로 선택 · 스카우트 · 얼리 드래프트 · 입단 테스트(수련선수)
+   ========================================================= */
+function scoutBonus(){ return Math.min(2.4,(S.scouts||[]).filter(x=>x.kind==='pro').length*0.8); }
+function draftScoreEst(){ return ovr() + scoutBonus() + S.awards.filter(a=>a.y>=S.year-3 && /우승|최우수|청소년/.test(a.t)).length*1.2; }
+function draftProjection(){
+  const s=draftScoreEst();
+  return s>=64?'1라운드 상위 순번':s>=60?'1라운드':s>=55?'2라운드':s>=51?'3라운드':'지명이 어려워요';
+}
+function addScout(kind,team){ S.scouts=S.scouts||[]; if(!S.scouts.some(x=>x.kind===kind&&x.team===team)) S.scouts.push({kind,team,y:S.year}); }
+const UNIS_M=['경기대','인하대','성균관대','한양대','중부대'];
+function openPath(from){ S.modal={type:'path',from,msg:null,tried:{}}; S.screen='path'; save(); render(); }
+function pathChoice(c){
+  const m=S.modal;
+  if(c==='draft'){ S.modal=null; return runDraft(m.from); }
+  if(c==='uni'){ S.modal=null; return enterUni(); }
+  if(c==='stay'){ S.modal=null; S.grade++; addLog(`🎓 ${S.team.name} ${S.grade}학년. 드래프트는 한 해 더 기다린다.`,''); startSeason(); render(); return; }
+  if(c==='semiTest'){
+    const p=clamp(0.35+(ovr()-45)*0.045+((S.scouts||[]).some(x=>x.kind==='semi')?0.25:0),0.1,0.95);
+    m.tried.semi=true;
+    if(R()<p){ addLog('📝 실업팀 입단 테스트 합격!','good'); S.modal=null; S.salary=0; return joinSemi(); }
+    m.msg='실업팀 입단 테스트에서 떨어졌어요. 다른 길을 골라 주세요.'; addLog('📝 실업팀 입단 테스트 불합격.','bad'); save(); render(); return;
+  }
+  if(c==='proTest'){
+    const p=clamp(0.2+(ovr()-50)*0.05+scoutBonus()*0.05,0.08,0.8);
+    m.tried.pro=true;
+    if(R()<p){
+      const t=pick(krTeams()); addLog(`📝 ${t.name} 입단 테스트 합격! 수련선수로 프로 무대에 선다.`,'good');
+      pushNews({h:`테스트로 V리그 문 연 ${S.name}`,b:`드래프트에서 지명받지 못했던 ${S.name}이(가) 입단 테스트를 거쳐 ${t.name} 수련선수가 됐다.`,tag:'입단'});
+      S.modal=null; S.rookieSeason=true;
+      return openContract('수련선수 계약', teamFrom(t,clamp(72+ri(-2,4),66,80)), {stage:'PRO',trust:38,salary:0.4,years:1});
+    }
+    m.msg='프로 구단 입단 테스트에서 떨어졌어요.'; addLog('📝 프로 구단 입단 테스트 불합격.','bad'); save(); render(); return;
+  }
+}
+function enterUni(){
+  S.stage='UNI'; S.grade=1;
+  const offer=S.uniOffer;
+  const nm = S.gender==='M' ? (offer||pick(UNIS_M)) : null;
+  if(S.gender==='F'){ S.modal=null; return joinSemi(); } // 여자 대학 배구부는 거의 없어 실업팀으로
+  S.team={name:nm,e:nm.slice(0,2),rating:offer?53:50,color:'#0F766E',league:'대학'}; S.mates=makeMates(); S.trust=48; S.salary=0;
+  addLog(`🎓 ${nm} 배구부 ${offer?'장학생으로 ':''}진학. 2학년부터 얼리 드래프트에 도전할 수 있다.`,'hi');
+  startSeason(); render();
+}
+function pathView(){
+  const m=S.modal, from=m.from;
+  const proj=draftProjection(); const pros=(S.scouts||[]).filter(x=>x.kind==='pro');
+  let h=`<section class="paper plain"><p class="muted" style="margin:0">${from==='HS'?'고3 진로 선택':`대학 ${S.grade}학년 진로 선택`}</p>
+    <h2>${from==='HS'?'졸업 후 어디로 갈까요?':'얼리 드래프트에 나갈까요?'}</h2>
+    <div class="sheet"><div><span>종합</span><b>${ovr()}</b></div><div><span>예상 지명</span><b style="font-size:15px">${proj}</b></div><div><span>관심 프로 구단</span><b>${pros.length}</b></div><div><span>${from==='HS'?'대학 제안':'남은 학년'}</span><b style="font-size:15px">${from==='HS'?(S.uniOffer?esc(S.uniOffer):'없음'):`${4-S.grade}년`}</b></div></div>
+    ${pros.length?`<p class="muted">스카우트가 다녀간 구단: ${pros.map(x=>esc(x.team)).join(', ')}</p>`:''}
+    ${m.msg?`<p class="tip"><b>결과</b> ${esc(m.msg)}</p>`:''}`;
+  h+=`<button class="btn go" data-act="path" data-arg="draft">신인 드래프트 참가 신청<small>예상: ${proj}. 지명받지 못해도 다른 길이 있어요</small></button>`;
+  if(from==='HS'){
+    h+=`<button class="btn" data-act="path" data-arg="uni">${S.gender==='M'?(S.uniOffer?`${esc(S.uniOffer)} 진학 (장학 제안)`:'대학 진학'):'실업팀으로 가기'}<small>${S.gender==='M'?'몇 년 더 성장한 뒤 2학년부터 얼리 드래프트, 4학년엔 꼭 드래프트에 나가요':'여자 대학 배구부는 거의 없어 실업팀에서 뛰며 드래프트를 노려요'}</small></button>`;
+    if(!m.tried.semi) h+=`<button class="btn" data-act="path" data-arg="semiTest">실업팀 입단 테스트 지원<small>합격하면 실업팀에서 연봉을 받으며 매 시즌 드래프트에 도전해요</small></button>`;
+  }else{
+    h+=`<button class="btn" data-act="path" data-arg="stay">${S.grade+1}학년으로 한 해 더<small>더 성장해서 높은 순번을 노려요</small></button>`;
+  }
+  return h+`</section>`;
+}
+
+/* =========================================================
+   팬 댓글 반응 (기사·기자회견·시즌 결산 아래)
+   게임 운(S.rs)을 건드리지 않도록 기사 내용으로 만든 고정 시드를 써요.
+   ========================================================= */
+const NICKS=['배구는인생','스파이크장인','직관러','웜업존지킴이','리베로덕후','V리그10년차','매점알바','네트앞이','토스의신','블로킹벽','라이트공격','서브에이스','배구입문3일차','현장직관러','응원봉흔들어','퇴근후배구','점프력부럽','속공좋아','5세트전문가','체육관냄새','중계보다잠듦','기록지덕후','배구공수집가','하이볼주세요','디그장인'];
+const CMT={
+  win:['{n} 오늘 미쳤다 진짜','이 맛에 배구 보지ㅠㅠ','마지막 득점 보고 소리 질렀음','{t} 팬 하길 잘했다','결승 직관 간 사람 부럽다','{n} 이름 기억해 둬라 다들','눈물 나네 진짜'],
+  lose:['결승에서 아쉽다ㅠ','그래도 여기까지 온 게 어디야','다음엔 꼭 우승하자','{n} 혼자 너무 고생했다','체력이 바닥난 게 보였음','5세트 갔으면 몰랐는데','고개 숙이지 마요'],
+  mvp:['MVP 받을 만했다 인정','{n} 시대가 왔다','작년 웜업존이던 선수 맞음?','국대 감독님 보고 계시죠?','이 성장 서사 실화냐','{n} 유니폼 품절이래요','이제 해외 가는 거 아니지..?'],
+  draft:['{t} 드래프트 잘했다','고교 때부터 봤는데 될 선수임','처음엔 웜업존이겠지만 응원합니다','{n} 하이라이트 찾아보고 옴','신인상 가자','{t}에 이런 선수 필요했음'],
+  abroad:['한국 배구의 자존심 보여 줘','가서 꼭 주전 따라','유튜브로 중계 찾아볼게요','{t} 팬들 슬프겠다','연봉 실화?ㅋㅋ','돌아오면 꼭 친정으로'],
+  injury:['제발 크게 안 다쳤길','회복이 먼저입니다','무리시킨 거 아님?','기다릴게요 천천히 와요','보호대라도 사 주자 구단아'],
+  callup:['태극마크 축하해요','국대에서 꼭 주전 하자','소속팀은 혹사 걱정이겠네','{n} 국대 유니폼 잘 어울릴 듯'],
+  decline:['몸이 먼저긴 하지','그래도 국대는 가야지..','이해는 되는데 아쉽다','핑계 아님?','소속팀 팬은 오히려 좋음'],
+  humble:['인성도 MVP','이런 선수 응원 안 할 수가 없음','동료 챙기는 거 보소','겸손한데 실력도 있음'],
+  bold:['자신감 좋다ㅋㅋ','말한 만큼 해내네','건방진데 잘하니까 인정','이런 캐릭터 좋음'],
+  excuse:['판정 탓은 좀..','그래도 아쉬운 건 사실','이건 실수다','심판 탓 하지 말고 다음 경기 이기자'],
+  resolve:['이 마인드면 된다','다음 시즌 기대함','지는 법도 배워야 크지'],
+  slump:['요즘 폼이 왜 이래','쉬어야 할 듯','감독 기용이 문제임','곧 돌아올 거라 믿음','멘탈 관리 잘하자'],
+  bench:['언제 코트에서 보나','웜업존 몸풀기만 봐도 좋음','기회 한 번만 주세요 감독님','원포인트 서브 기대해 봅니다'],
+  rival:['{r}랑 라이벌 구도 재밌다','{n} vs {r} 누가 더 클까','둘 다 잘됐으면','라이벌이 있어야 성장함'],
+  switch:['포지션 전향 신의 한 수 될 듯','적응기 좀 걸리겠다','감독이 뭘 보고 바꿨을까','이 선택 응원합니다'],
+  generic:['오늘도 배구 보러 갑니다','이번 시즌 재밌다','{t} 화이팅','기사 잘 봤어요','{n} 꾸준히 응원합니다','직관 가고 싶다'],
+  troll:['또 범실ㅋㅋ','과대평가 아님?','이 정도면 웜업존이 맞지','기사 너무 띄워 주네','팬들 눈에 콩깍지'],
+};
+function cRng(seed){ let h=hashSeed(seed); return ()=>{ h^=h<<13; h>>>=0; h^=h>>>17; h^=h<<5; h>>>=0; return h/4294967296; }; }
+function guessCtx(text){
+  const t=String(text||'');
+  if(/부상|재활|인대|탈구/.test(t)) return 'injury';
+  if(/고사|거부/.test(t)) return 'decline';
+  if(/MVP|신인선수상|올해의/.test(t)) return 'mvp';
+  if(/우승|금메달|챔피언/.test(t)) return 'win';
+  if(/준우승|은메달|탈락/.test(t)) return 'lose';
+  if(/지명|드래프트|입단|테스트/.test(t)) return 'draft';
+  if(/진출|이적/.test(t)) return 'abroad';
+  if(/대표팀|주장|승선/.test(t)) return 'callup';
+  if(/라이벌/.test(t)) return 'rival';
+  if(/전향/.test(t)) return 'switch';
+  if(/슬럼프|연패|악플|혹사/.test(t)) return 'slump';
+  if(/주전 경쟁|웜업존/.test(t)) return 'bench';
+  return 'generic';
+}
+function makeComments(ctxName,seed,k){
+  const r=cRng(seed+'|'+ctxName); const fame=S?S.fame:0;
+  const fill=s=>s.replace(/\{n\}/g,S?S.name:'').replace(/\{t\}/g,S&&S.team?S.team.name.split(' ')[0]:'').replace(/\{r\}/g,S&&S.rival?S.rival.name:'라이벌');
+  const pool=[...(CMT[ctxName]||CMT.generic)];
+  const out=[]; const used=new Set();
+  const n=k||3;
+  for(let i=0;i<n && pool.length;i++){ const j=Math.floor(r()*pool.length); out.push(fill(pool.splice(j,1)[0])); }
+  if(fame>8 && r()<.45 && !['injury'].includes(ctxName)) out.push(fill(CMT.troll[Math.floor(r()*CMT.troll.length)]));
+  const base=Math.max(3,Math.round(4+fame*2.2));
+  const list=out.map((t,i)=>{ let nk; do{ nk=NICKS[Math.floor(r()*NICKS.length)]; }while(used.has(nk)&&used.size<NICKS.length); used.add(nk);
+    const troll=CMT.troll.includes(t); const like=Math.round(base*(troll?0.3:1)*(0.4+r()*1.6)); return {nk,t,like,troll}; });
+  list.sort((a,b)=>b.like-a.like);
+  const total=Math.max(list.length, Math.round(base*(1.5+r()*2)));
+  return {list,total};
+}
+function commentsHTML(ctxName,seed,opts){
+  opts=opts||{};
+  const {list,total}=makeComments(ctxName,seed,opts.k);
+  return `<details class="cmts" ${opts.open?'open':''}><summary>댓글 ${total.toLocaleString('ko-KR')}개</summary><ul>${list.map((c,i)=>`<li class="${c.troll?'troll':''}"><span class="nk">${esc(c.nk)}${i===0&&c.like>5?' <em>베스트</em>':''}</span><span class="tx">${esc(c.t)}</span><span class="lk">좋아요 ${c.like.toLocaleString('ko-KR')}</span></li>`).join('')}</ul></details>`;
 }
 
 /* =========================================================
@@ -3044,7 +3302,7 @@ function header(){
     </div>`}
   </header>
   <nav class="tabs" role="tablist">
-    ${[['play','진행'],['stats','능력치'],['career','기록'],['compare','비교'],['trophy','트로피']].map(([k,t])=>`<button class="tab" role="tab" aria-selected="${tab===k}" data-tab="${k}">${t}</button>`).join('')}
+    ${[['play','진행'],['stats','능력치'],['shop','상점'],['career','기록'],['compare','비교'],['trophy','트로피']].map(([k,t])=>`<button class="tab" role="tab" aria-selected="${tab===k}" data-tab="${k}">${t}</button>`).join('')}
   </nav>`;
 }
 
@@ -3063,6 +3321,7 @@ function render(){
   else if(S.screen==='live') body=liveView();
   else if(S.screen==='coach') body=coachView();
   else if(tab==='compare') body=compareView();
+  else if(tab==='shop') body=shopView();
   else if(tab==='stats') body=statsView();
   else if(tab==='career') body=careerView();
   else if(tab==='trophy') body=trophyView();
@@ -3096,6 +3355,9 @@ function act(a,arg){
   if(a==='live'){ liveChoose(+arg); return; }
   if(a==='restAll'){ restThrough(); return; }
   if(a==='runSeason'){ runSeason(); return; }
+  if(a==='buy'){ buyItem(arg); return; }
+  if(a==='path'){ pathChoice(arg); return; }
+  if(a==='goShop'){ tab='shop'; render(); return; }
   if(a==='stopSeason'){ stopSeason(); return; }
   if(a==='focus'){ toggleFocus(arg); return; }
   if(a==='hard'){ setHard(arg==='1'); return; }
@@ -3169,20 +3431,6 @@ function playView(){
     }
     h+=`</section>`;
   }
-  if(sc==='clutch'){
-    const c=S.modal.c;
-    const m=c.scene.match(/(\d+):(\d+)/); const sc1=m?m[1]:'24', sc2=m?m[2]:'23';
-    h+=`<section class="paper plain clutch"><p class="muted" style="margin:0 0 6px">결정적 순간, ${esc(c.lab)}</p>
-      <div class="mini-board"><span class="side me">${esc(S.team.name.split(' ').pop())}</span>${led(`${sc1.padStart(2,' ')}:${sc2.padStart(2,' ')}`,3.4)}<span class="side">상대</span></div>
-      <p class="say">${esc(c.scene)}</p>`+
-      c.opts.map((o,i)=>{const p=clutchChance(o); const n=p>=.75?4:p>=.6?3:p>=.45?2:p>=.3?1:0;
-        return `<button class="btn" data-act="clutch" data-arg="${i}"><strong>${esc(o.t)}</strong><small>${esc(o.d)}. ${o.k.map(k=>STATS[k]).join('와 ')}에 달렸어요. 성공 예감<span class="odds" aria-label="${n}/4">${[0,1,2,3].map(j=>`<i class="${j<n?'on':''}"></i>`).join('')}</span></small></button>`;}).join('')+`</section>`;
-  }
-  if(sc==='clutchResult'){
-    const m=S.modal;
-    const cid = m.o.k.includes('srv')?'srv':({OH:'atk',OP:'atk',MB:'blk',S:'set',L:'def'}[S.pos]);
-    h+=`<section class="paper plain clutch">${sceneHTML(cid,{ok:m.ok,label:m.ok?'성공 장면':'실패 장면'})}<p class="muted" style="margin:0">${esc(m.o.t)} (성공 확률 약 ${Math.round(m.p*100)}%)</p><p class="verdict ${m.ok?'ok':'no'}">${m.ok?'성공':'실패'}</p>${m.delta&&m.delta.stats.length?deltaHTML(m.delta,'승부처 경험'):''}<p class="say" style="font-size:19px">${esc(m.txt)}</p><button class="btn go" data-act="clutchGo">경기 결과 보기</button></section>`;
-  }
   if(sc==='report'){
     const m=S.modal;
     const scn=m.scene; const capMap={atk:'공격 훈련',hard:'지옥 특훈',blk:'블로킹 훈련',srv:'서브 훈련',def:'리시브·디그 훈련',set:'토스 훈련',fit:'웨이트 훈련',vid:'영상 분석',rest:'휴식',bench:'웜업존에서 몸을 푸는 중',rally:scn&&scn.win?'마지막 랠리, 우리가 가져갔다':'마지막 랠리, 상대가 가져갔다'};
@@ -3199,6 +3447,7 @@ function playView(){
       ${S.season&&S.season.snap0?deltaHTML(diffSnap(S.season.snap0),'이번 시즌 성장 (훈련·경기)'):''}
       ${seasonGrid(r)}
       ${r.team_aw.length?`<p><strong>팀 성적</strong> ${r.team_aw.map(esc).join(', ')}</p>`:''}
+      <h3 style="margin-top:12px">팬 반응</h3>${commentsHTML(m.lines.some(l=>/MVP|신인선수상|올해의/.test(l))?'mvp':(S.season&&S.season.champion)?'win':(r.role==='웜업존'||r.role==='원포인트')?'bench':'generic',`${S.year}-season-${S.name}`,{open:true,k:3})}
       <h3 style="margin-top:12px">개인 수상</h3><ul class="report">${m.lines.map(l=>`<li style="font-weight:400">${esc(l)}</li>`).join('')}</ul>
       <button class="btn go" data-act="endSeason">다음 시즌 시작</button></section>`;
   }
@@ -3218,12 +3467,18 @@ function playView(){
       h+=`</section>`;
     }
   }
+  if(sc==='path') h+=pathView();
   if(sc==='draft'){
     const m=S.modal;
     if(m.fail){
-      h+=`<section class="paper"><h2>드래프트에서 지명받지 못했어요</h2><p>마지막까지 이름이 불리지 않았습니다. 종합 능력치 ${ovr()}.</p>`;
-      if(m.from==='HS') h+=`<button class="btn go" data-act="draftFail" data-arg="uni">대학에 진학하기<small>2년 동안 성장해 다시 도전합니다</small></button>`;
-      h+=`<button class="btn" data-act="draftFail" data-arg="semi">실업팀에 입단하기<small>커리어가 여기서 끝납니다</small></button></section>`;
+      const semiNow = m.from==='SEMI';
+      h+=`<section class="paper"><h2>${m.noDraft?'V리그 드래프트 나이를 넘겼어요':'드래프트에서 지명받지 못했어요'}</h2><p>${m.noDraft?`${S.age}세. 실업 무대에서 계속 뛸지 정해야 해요.`:`마지막까지 이름이 불리지 않았습니다. 종합 능력치 ${ovr()}. 1라운드권은 보통 60 이상이에요.`}</p>`;
+      if(m.msg) h+=`<p class="tip"><b>결과</b> ${esc(m.msg)}</p>`;
+      if(!m.noDraft && !(m.tried&&m.tried.pro)) h+=`<button class="btn" data-act="path" data-arg="proTest">프로 구단 입단 테스트 지원<small>합격하면 수련선수로 V리그에 들어가요. 쉽지 않아요</small></button>`;
+      if(m.from==='HS') h+=`<button class="btn go" data-act="draftFail" data-arg="uni">${S.gender==='M'?'대학에 진학하기':'실업팀으로 가기'}<small>${S.gender==='M'?'더 성장해서 2학년부터 다시 도전해요':'실업팀에서 뛰며 매 시즌 다시 도전해요'}</small></button>`;
+      h+=`<button class="btn ${m.from==='HS'?'':'go'}" data-act="draftFail" data-arg="semi">${semiNow?`${esc(S.team.name)}에서 한 시즌 더 뛰기`:'실업팀에 입단하기'}<small>${m.noDraft?'실업 리그에서 선수 생활을 이어 가요':'실업 무대에서 뛰며 매 시즌 드래프트에 다시 도전해요. 실업 출신 V리그 선수도 많아요'}</small></button>`;
+      if(m.from!=='HS') h+=`<button class="btn quiet" data-act="draftFail" data-arg="quit">선수 생활 마무리하기</button>`;
+      h+=`</section>`;
     }else{
       h+=`<section class="paper plain"><p class="muted" style="margin:0">신인 드래프트</p>
         <div class="mini-board"><span class="side">${m.rd}라운드</span>${led(`${m.rd}-${m.pick}`,3.4)}<span class="side me">${m.pick}순위</span></div>
@@ -3260,7 +3515,7 @@ function railHTML(){
   const news = S.news&&S.news.length ? `<section class="paper plain">${newsHTML(S.news)}</section>` : '';
   return `<aside class="rail" aria-label="뉴스와 기록지">${news}${logCard('log-rail')}</aside>`;
 }
-const POPS=['event','eventResult','interview','ivResult'];
+const POPS=['event','eventResult','interview','ivResult','clutch','clutchResult'];
 function popTimerHTML(){ return S.auto?'':`<div class="pop-timer" aria-hidden="true"><i></i><span>잠시 후 자동으로 넘어가요. 팝업을 누르면 멈춰요</span></div>`; }
 function popupBg(){ const t=S.modal&&S.modal.type; return ['report','awards','draft'].includes(t)?t:'phase'; }
 function popWrap(kind,label,inner){
@@ -3282,7 +3537,21 @@ function popupHTML(){
   }
   if(sc==='ivResult'){
     const r=S.ivDone;
-    return popWrap('press','기자회견',`<h2 id="popT">기사가 나갔어요</h2><article class="news"><p class="hl">[인터뷰] ${esc(S.name)} “${esc(r.quote)}”</p><p class="bd">${esc(r.q)}라는 질문에 “${esc(r.a)}”라고 답했다.</p></article><p class="tip"><b>결과</b> ${esc(r.res)}</p>${r.delta&&r.delta.stats.length?deltaHTML(r.delta,'답변으로 바뀐 능력치'):''}<button class="btn go" data-act="ivGo">계속</button>${popTimerHTML()}`);
+    return popWrap('press','기자회견',`<h2 id="popT">기사가 나갔어요</h2><article class="news"><p class="hl">[인터뷰] ${esc(S.name)} “${esc(r.quote)}”</p><p class="bd">${esc(r.q)}라는 질문에 “${esc(r.a)}”라고 답했다.</p>${commentsHTML(({win:['humble','bold','resolve'],lose:['resolve','excuse','resolve'],slump:['resolve','humble','slump'],award:['humble','humble','bold'],abroad:['abroad','callup','abroad'],draft:['humble','bold','draft']}[r.type]||['generic'])[r.idx||0]||'generic',S.year+r.a,{open:true})}</article><p class="tip"><b>결과</b> ${esc(r.res)}</p>${r.delta&&r.delta.stats.length?deltaHTML(r.delta,'답변으로 바뀐 능력치'):''}<button class="btn go" data-act="ivGo">계속</button>${popTimerHTML()}`);
+  }
+  if(sc==='clutch'){
+    const c=S.modal.c;
+    const m=c.scene.match(/(\d+):(\d+)/); const sc1=m?m[1]:'24', sc2=m?m[2]:'23';
+    return popWrap('clutch','결정적 순간',`<p class="muted" style="margin:0 0 6px">${esc(c.lab)}</p>
+      <div class="mini-board"><span class="side me">${esc(S.team.name.split(' ').pop())}</span>${led(`${sc1.padStart(2,' ')}:${sc2.padStart(2,' ')}`,3.2)}<span class="side">상대</span></div>
+      <h2 id="popT" class="say">${esc(c.scene)}</h2>`+
+      c.opts.map((o,i)=>{const p=clutchChance(o); const n=p>=.75?4:p>=.6?3:p>=.45?2:p>=.3?1:0;
+        return `<button class="btn" data-act="clutch" data-arg="${i}"><strong>${esc(o.t)}</strong><small>${esc(o.d)}. ${o.k.map(k=>STATS[k]).join('와 ')}에 달렸어요. 성공 예감<span class="odds" aria-label="${n}/4">${[0,1,2,3].map(j=>`<i class="${j<n?'on':''}"></i>`).join('')}</span></small></button>`;}).join(''));
+  }
+  if(sc==='clutchResult'){
+    const m=S.modal;
+    const cid = m.o.k.includes('srv')?'srv':({OH:'atk',OP:'atk',MB:'blk',S:'set',L:'def'}[S.pos]);
+    return popWrap('clutch','결정적 순간',`${sceneHTML(cid,{ok:m.ok,label:m.ok?'성공 장면':'실패 장면'})}<h2 id="popT" class="verdict ${m.ok?'ok':'no'}">${m.ok?'성공':'실패'}</h2><p class="muted" style="margin:0">${esc(m.o.t)} (성공 확률 약 ${Math.round(m.p*100)}%). ${esc(m.txt)}</p>${m.delta&&m.delta.stats.length?deltaHTML(m.delta,'승부처 경험'):''}<button class="btn go" data-act="clutchGo">경기 결과 보기</button>${popTimerHTML()}`);
   }
   if(sc==='phase' && S.injDecision){
     return popWrap('injury','부상',`<h2 id="popT">${esc(S.injury.name)}</h2><p>${esc(S.injury.from||'')} 크게 다쳤어요. 정밀 검사 결과를 보고 치료 방법을 정해야 해요.</p>
